@@ -21,9 +21,9 @@ Program Features
 
 Installation Instructions
 -------------------------
-best way to install this on your raspberry pi is to
-clone from my github repository
-install github and clone repository
+Best way to install this on your raspberry pi is to
+clone from my github repository.
+How to Install github and clone repository
 
 cd ~
 sudo apt-get install git-cored
@@ -53,6 +53,9 @@ mkdir images
 execute rpi-timelapse
 
 python ./rpi-timelapse.py
+or
+chmod +x rpi-timelapse.py
+./rpi-timelapse.py
 
 Howto make rpi-timelapse.py startup on boot
 -------------------------------------------
@@ -65,6 +68,9 @@ Check permissions for the /etc/init.d/rpi-timelapse.sh
 to make sure it is executable  
 change permissions for rpi-timelapse.sh using chmod command 
 
+cd ~
+cd rpi-timelapse
+chmod +x rpi-timelapse.py
 cd /etc/init.d
 sudo chmod +x rpi-timelapse.sh
 sudo update-rc.d pimotion.sh defaults
@@ -84,6 +90,9 @@ sudo apt-get install mencoder
 execute makemovie.py
 
 python ./makemovie.py
+or
+chmod +x makemovie.py
+./makemovie.py
 
 Contact me via github or by email address in comments
 
