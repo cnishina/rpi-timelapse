@@ -13,10 +13,10 @@ Upgrade History
 Program Features
 ----------------
 - Note initial camera resolution is HD 1920x1080
-- rpi camera settings for consistent images
-- settings for daylight hours
+- rpi camera settings for consistent image exposures
+- settings for specifying daylight hours
 - settings to take low light images at night
-- setting to show an position date/time stamp info directly on images
+- settings to show date/time stamp on images also text colour/position
 - setting for flipping images vertically and/or horizontally
 
 Installation Instructions
