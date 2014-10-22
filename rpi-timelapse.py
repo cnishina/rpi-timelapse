@@ -1,7 +1,10 @@
 #!/usr/bin/python
 
 # pi-timelapse using raspberry pi camera
-# written by Claude Pageau 21-Oct-2014 initial release
+# written by Claude Pageau
+# 21-Oct-2014 initial release ver 1.0
+# 22-Oct-2014 Update to include bypassing night shots and auto camera settings
+#
 # source code published on github https://github.com/pageauc
 # You will need to install python-picamera and python-imaging
 #
@@ -23,17 +26,20 @@ from time import sleep
 # Set global camera settings
 imageWidth = 1920
 imageHeight = 1080
-filePath = '/home/pi/rpi-timelapse/images/' # Where to save the pictures
+filePath = '/home/pi/rpi-timelapse/fatusb/' # Where to save the pictures
 fileNamePrefix = 'cam1-'
 timeDelay = 60*10    # delay time in seconds this is every 10 minutes
-showNight = True     # Not Implemented show night time images using low light settings 
+
 dayLightStart = 7    # 7am or later
 dayLightEnd = 19     # 7pm or earlier
+dayLightAuto = True  # set camera to auto settings rather thant consistent
+nightShots = True    # If False no shots will be taken when 
+nightAuto  = False   # set Night settings to auto instead of low light settings
 
-verbose = True
-previewOn = False
-picameraVFlip = False
-picameraHFlip = False
+verbose = False      # False to surpress console messages
+previewOn = False    # False to supress preview mode
+picameraVFlip = False  # True to flip image vertically
+picameraHFlip = False  # True to flip image horizontally 
 
 # Settings for Displaying a date/time stamp directly on the image
 showDateOnImage = True   # Set to False for No display of date/time on image
@@ -88,32 +94,51 @@ with picamera.PiCamera() as camera:
     print "No Display - Verbose set to False"  
 
   while True:  
+    takePhoto = True
     rightnow = datetime.datetime.now()
     filename = "%s%s%04d%02d%02d-%02d%02d%02d.jpg" % ( filePath, fileNamePrefix ,rightnow.year, rightnow.month, rightnow.day, rightnow.hour, rightnow.minute, rightnow.second)
     if ((rightnow.hour >= dayLightStart) and (rightnow.hour <= dayLightEnd)):
-      camera.framerate = 30
-      # Give the camera's auto-exposure and auto-white-balance algorithms
-      # some time to measure the scene and determine appropriate values
-      camera.iso = 200
-      time.sleep(2)
-      # Now fix the values
-      camera.shutter_speed = camera.exposure_speed
-      camera.exposure_mode = 'off'
-      g = camera.awb_gains
-      camera.awb_mode = 'off'
-      camera.awb_gains = g
+      # Camera settings for Daytime hours
+      # one for Auto and a second for consistenct photos
+      if dayLightAuto:             # set camera daylight settings to auto
+        camera.exposure_mode = 'auto'
+        camera.awb_mode = 'auto'
+      else:                        # set camera daylight for consistency
+        camera.framerate = 30
+        # Give the camera's auto-exposure and auto-white-balance algorithms
+        # some time to measure the scene and determine appropriate values
+        camera.iso = 100
+        time.sleep(2)
+        # Now fix the values
+        camera.shutter_speed = camera.exposure_speed
+        camera.exposure_mode = 'off'
+        g = camera.awb_gains
+        camera.awb_mode = 'off'
+        camera.awb_gains = g
     else:
-      # Set for Low Light Conditions 
-      # Set a framerate of 1/6fps, then set shutter
-      # speed to 6s and ISO to 800
-      camera.framerate = Fraction(1, 6)
-      camera.shutter_speed = 6000000
-      camera.exposure_mode = 'off'
-      camera.iso = 800
-      # Give the camera a good long time to measure AWB
-      # (you may wish to use fixed AWB instead)
-      sleep(10)
-    camera.capture(filename)
+      # check if  night shots are required
+      if nightShots:
+        # Check if night camera settings are to be set to Auto
+        if nightAuto:
+          camera.exposure_mode = 'auto'
+          camera.awb_mode = 'auto'
+        else:
+          # Night time low light settings have long exposure times 
+          # Settings for Low Light Conditions 
+          # Set a framerate of 1/6fps, then set shutter
+          # speed to 6s and ISO to 800
+          camera.framerate = Fraction(1, 6)
+          camera.shutter_speed = 6000000
+          camera.exposure_mode = 'off'
+          camera.iso = 800
+          # Give the camera a good long time to measure AWB
+          # (you may wish to use fixed AWB instead)
+          sleep(10)
+      else:
+        takePhoto = False 
+
+    if takePhoto:
+      camera.capture(filename)
 
     if showDateOnImage:
        imageText = "%04d%02d%02d-%02d:%02d:%02d" % (rightnow.year, rightnow.month, rightnow.day, rightnow.hour, rightnow.minute, rightnow.second)
