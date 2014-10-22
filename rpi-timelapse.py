@@ -23,8 +23,8 @@ from time import sleep
 # Set global camera settings
 imageWidth = 1920
 imageHeight = 1080
-filePath = '/home/pi/rpi-timelapse/images/'  # Where to save the image files
-fileNamePrefix = 'Cam1-'
+filePath = '/home/pi/rpi-timelapse/images/' # Where to save the pictures
+fileNamePrefix = 'cam1-'
 timeDelay = 60*10    # delay time in seconds this is every 10 minutes
 showNight = True     # Not Implemented show night time images using low light settings 
 dayLightStart = 7    # 7am or later
@@ -84,11 +84,12 @@ with picamera.PiCamera() as camera:
     print "dayLightStart= %s to dayLightEnd=%s " % ( dayLightStart, dayLightEnd)
     print "====================================================================================="
     print " "  
-  
-  # Note initial image will not have optimized settings.
-  for filename in camera.capture_continuous(filePath + fileNamePrefix + '{timestamp:%Y%m%d%H%M%S}.jpg'): # prefix with timestamp (date, month, day, hour, minute, second) to ensure unique filenames
+  else:
+    print "No Display - Verbose set to False"  
 
+  while True:  
     rightnow = datetime.datetime.now()
+    filename = "%s%s%04d%02d%02d-%02d%02d%02d.jpg" % ( filePath, fileNamePrefix ,rightnow.year, rightnow.month, rightnow.day, rightnow.hour, rightnow.minute, rightnow.second)
     if ((rightnow.hour >= dayLightStart) and (rightnow.hour <= dayLightEnd)):
       camera.framerate = 30
       # Give the camera's auto-exposure and auto-white-balance algorithms
@@ -112,11 +113,11 @@ with picamera.PiCamera() as camera:
       # Give the camera a good long time to measure AWB
       # (you may wish to use fixed AWB instead)
       sleep(10)
+    camera.capture(filename)
 
     if showDateOnImage:
-       starttime = datetime.datetime.now()
-       rightNow = "%04d%02d%02d-%02d:%02d:%02d" % (starttime.year, starttime.month, starttime.day, starttime.hour, starttime.minute, starttime.second)
-       writeDateToImage(filename,rightNow)
+       imageText = "%04d%02d%02d-%02d:%02d:%02d" % (rightnow.year, rightnow.month, rightnow.day, rightnow.hour, rightnow.minute, rightnow.second)
+       writeDateToImage(filename, imageText)
 
     if verbose:
       print('Captured %s' % filename)
