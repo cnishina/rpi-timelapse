@@ -17,13 +17,15 @@ import picamera
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
+from fractions import Fraction
+from time import sleep
 
 # Set global camera settings
 imageWidth = 1920
 imageHeight = 1080
-filePath = '/home/pi/rpi-timelapse/images/' # Where to save the pictures
-fileNamePrefix = 'front-'
-timeDelay = 60*15    # delay time in seconds this is every 15 minutes
+filePath = '/home/pi/rpi-timelapse/images/'  # Where to save the image files
+fileNamePrefix = 'Cam1-'
+timeDelay = 60*10    # delay time in seconds this is every 10 minutes
 showNight = True     # Not Implemented show night time images using low light settings 
 dayLightStart = 7    # 7am or later
 dayLightEnd = 19     # 7pm or earlier
@@ -37,32 +39,6 @@ picameraHFlip = False
 showDateOnImage = True   # Set to False for No display of date/time on image
 showTextBottom = True    # Otherwise text is displayed at top of image
 showTextWhite = True     # Otherwise text colour is black
-
-def checkForDay():
-  rightnow = datetime.datetime.now()
-  if ((rightnow.hour >= dayLightStart) and (rightnow.hour <= dayLightEnd)):
-    camera.framerate = 30
-    # Give the camera's auto-exposure and auto-white-balance algorithms
-    # some time to measure the scene and determine appropriate values
-    camera.iso = 200
-    time.sleep(2)
-    # Now fix the values
-    camera.shutter_speed = camera.exposure_speed
-    camera.exposure_mode = 'off'
-    g = camera.awb_gains
-    camera.awb_mode = 'off'
-    camera.awb_gains = g
-  else:
-    # Set for Low Light Conditions 
-    # Set a framerate of 1/6fps, then set shutter
-    # speed to 6s and ISO to 800
-    camera.framerate = Fraction(1, 6)
-    camera.shutter_speed = 6000000
-    camera.exposure_mode = 'off'
-    camera.iso = 800
-    # Give the camera a good long time to measure AWB
-    # (you may wish to use fixed AWB instead)
-    sleep(10)
 
 def writeDateToImage(imagename,datetoprint):
   if showTextWhite :
@@ -89,8 +65,8 @@ def writeDateToImage(imagename,datetoprint):
      
 with picamera.PiCamera() as camera:
   # camera.led = False # turn off camera led needs GPIO library installed
-  camera.resolution = (imageWidth, imageHeight) # Maximum resolution because bigger is better in post
-  #camera.rotation = cameraRotate # Not Implemented use hflip and vflip
+  camera.resolution = (imageWidth, imageHeight) 
+  #camera.rotation = cameraRotate Note use picameraVFlip and picameraHFlip variables
   if previewOn:
     camera.start_preview()
   if picameraVFlip:
@@ -98,7 +74,6 @@ with picamera.PiCamera() as camera:
   if picameraHFlip:
     camera.hflip = picameraHFlip
     
-  checkForDay()    # Set initial camera settings for time of day
   if verbose:
     print " "
     print "rpi-timelapse.py ver=%s  written by Claude Pageau  email: pageauc@gmail.com" % ( piTimelapseVer )
@@ -108,13 +83,41 @@ with picamera.PiCamera() as camera:
     print "showDateOnImage=%s showTextBottom=%s  showTextWhite= %s" % ( showDateOnImage, showTextBottom, showTextWhite )
     print "dayLightStart= %s to dayLightEnd=%s " % ( dayLightStart, dayLightEnd)
     print "====================================================================================="
-    print " "    
+    print " "  
+  
+  # Note initial image will not have optimized settings.
   for filename in camera.capture_continuous(filePath + fileNamePrefix + '{timestamp:%Y%m%d%H%M%S}.jpg'): # prefix with timestamp (date, month, day, hour, minute, second) to ensure unique filenames
-    checkForDay()  # check if still daylight conditions
+
+    rightnow = datetime.datetime.now()
+    if ((rightnow.hour >= dayLightStart) and (rightnow.hour <= dayLightEnd)):
+      camera.framerate = 30
+      # Give the camera's auto-exposure and auto-white-balance algorithms
+      # some time to measure the scene and determine appropriate values
+      camera.iso = 200
+      time.sleep(2)
+      # Now fix the values
+      camera.shutter_speed = camera.exposure_speed
+      camera.exposure_mode = 'off'
+      g = camera.awb_gains
+      camera.awb_mode = 'off'
+      camera.awb_gains = g
+    else:
+      # Set for Low Light Conditions 
+      # Set a framerate of 1/6fps, then set shutter
+      # speed to 6s and ISO to 800
+      camera.framerate = Fraction(1, 6)
+      camera.shutter_speed = 6000000
+      camera.exposure_mode = 'off'
+      camera.iso = 800
+      # Give the camera a good long time to measure AWB
+      # (you may wish to use fixed AWB instead)
+      sleep(10)
+
     if showDateOnImage:
        starttime = datetime.datetime.now()
        rightNow = "%04d%02d%02d-%02d:%02d:%02d" % (starttime.year, starttime.month, starttime.day, starttime.hour, starttime.minute, starttime.second)
        writeDateToImage(filename,rightNow)
+
     if verbose:
       print('Captured %s' % filename)
     time.sleep(timeDelay) # time between shots in seconds
