@@ -26,7 +26,7 @@ from time import sleep
 # Set global camera settings
 imageWidth = 1920
 imageHeight = 1080
-filePath = '/home/pi/rpi-timelapse/fatusb/' # Where to save the pictures
+filePath = '/home/pi/rpi-timelapse/images/' # Where to save the pictures
 fileNamePrefix = 'cam1-'
 timeDelay = 60*10    # delay time in seconds this is every 10 minutes
 
