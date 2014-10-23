@@ -8,7 +8,7 @@ email: pageauc@gmail.com
 Upgrade History
 ---------------
 21-Oct-2014 ver 1.0 initial release on github 
-
+23-Oct-2014 ver 1.1 Implemented additional number sequence logic
 
 Program Features
 ----------------
