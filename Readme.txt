@@ -111,8 +111,11 @@ sudo chmod +x rpi-timelapse.sh
 sudo update-rc.d rpi-timelapse.sh defaults
 cd ~
 
-Note if you change the location of rpi-timelapse folder or program name
-you will need to edit the /etc/init.d/rpi-timelapse.sh accordingly
+NOTE
+Edit the rpi-timelapse.py file to set verbose=False.  This will prevent
+console messages when the program runs in the background.
+Also if you change the location of rpi-timelapse folder or program name
+you will need to edit the /etc/init.d/rpi-timelapse.sh file accordingly
 
 How to Install makemovie.py 
 ---------------------------
