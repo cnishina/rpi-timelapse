@@ -1,6 +1,6 @@
                 rpi-timelapse.py
 
-rpi-timelapse.py using raspberry pi width RPI camera installed.
+rpi-timelapse.py using a raspberry pi with RPI camera installed.
 This program uses the picamera python module to take images.
 written by Claude Pageau 21-Oct-2014 initial release
 source code published on github https://github.com/pageauc
@@ -10,23 +10,26 @@ Background
 ----------
 I wrote this program so I could run the RPI camera unattended to record
 our winters when we are not here. This needs to run for approx 5-6 months
-unattended so I have connected it to a UPS and installed a 1TB usb drive
-formatted ext4 and mounted in a folder in the rpi-timelapse folder.
-That way I should not run out of storage space.
-I wanted to also be able to record night shots to see snow build up.
-This requires a low light camera settings with long exposures.  The big problem
-was getting the program to auto detect sunrise, sunset and twilight
+unattended, so I have connected it to a UPS and installed a 1TB usb drive
+formatted ext4 and mounted on a folder in the rpi-timelapse folder.
+That way I should not run out of storage space or wear out the SD card.
+
+I have the RPI camera mounted in a high window on a stand so it should
+not get blocked by snow except if it temporarily packs against the window.
+This was a challenging programming experience for me and it may not be the
+best way, but the algorithm works good enough to do the job.
+
+I wanted to also be able to record night shots to see how snow builds up.
+This requires low light camera settings with long exposures.  The big problem
+was getting the program to auto detect day, night and twilight
 conditions.  The program does this but may need a bit of tuning
 for your conditions.  Eg. nightLowShutSpeedSec = 6
 6 seconds is the maximum exposure time but you can set it lower if your
 night time scene is brighter than mine.
 You might get a little over or under exposed images during twilight but
-they should not be totally black or white.  In the spring I will
-post a YouTube video of the results.
-I have the RPI camera mounted in a high window on a stand so it should
-not get blocked by snow except if it temporarily packs against the window.
-This was challenging code for me and it may not be the best way
-but the algorithm works good enough to do the job.
+images should not be totally black or white.  I am still tuning program.
+In the spring I will post a YouTube video of the results.
+
 Claude ....
 
 Upgrade History
