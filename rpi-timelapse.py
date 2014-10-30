@@ -92,9 +92,10 @@ numberStart = 10000      # Set start of number sequence
 numberMax = 0            # Set Max number of images desired. Zero for Continuous
 numberRecycle = False    # After numberMax reached restart at numberStart instead of exiting
 
-imageDayAuto = True 
+imageDayAuto = True      # Sets daylight camera awb and exposure to Auto
 imageNightAuto = False   # set auto exp and wb instead of using low light settings
-TLSensitivity = 4
+TLSensitivity = 4        # determines the trigger for Max to current image size
+                         # Lower is more sensitive (narrower range)
 
 nightImages = True   # Take images during Night hours  True=Yes False=No
 nightLowShutSpeedSec = 6 # Max=6 Secs of long exposure for LowLight night images

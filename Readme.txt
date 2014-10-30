@@ -19,13 +19,24 @@ not get blocked by snow except if it temporarily packs against the window.
 This was a challenging programming experience for me and it may not be the
 best way, but the algorithm works good enough to do the job.
 
-I wanted to also be able to record night shots to see how snow builds up.
+I wanted to be able to record night shots to see how snow builds up.
 This requires low light camera settings with long exposures.  The big problem
 was getting the program to auto detect day, night and twilight
-conditions.  The program does this but may need a bit of tuning
-for your conditions.  Eg. nightLowShutSpeedSec = 6
+conditions.  Since this RPI will not be connected to the internet I was
+concerned that there was a chance the RPI might loose it's clock settings.
+Also sunrise and sunset times change ahead and back over time.
+The program does accommodate this and does not require a real time clock
+although the date/time stamp on the images will be messed up. I have mine
+set to sequential numbering to keep the images in order. If there is a 
+reboot it continues numbering where it left off. You may need  to change
+some settings to tune the camera for your conditions.
+Eg. nightLowShutSpeedSec = 6
 6 seconds is the maximum exposure time but you can set it lower if your
 night time scene is brighter than mine.
+TLSensitivity = 4 
+Can also be adjusted (determines the trigger between Max file size and
+current file size to detect changes. higher is less sensitive lower is more
+sensitive.  Review code if you need more tuning options.
 You might get a little over or under exposed images during twilight but
 images should not be totally black or white.  I am still tuning program.
 In the spring I will post a YouTube video of the results.
