@@ -1,21 +1,47 @@
                 rpi-timelapse.py
 
-rpi-timelapse.py using raspberry pi camera module and picamera
+rpi-timelapse.py using raspberry pi width RPI camera installed.
+This program uses the picamera python module to take images.
 written by Claude Pageau 21-Oct-2014 initial release
 source code published on github https://github.com/pageauc
 email: pageauc@gmail.com
+
+Background
+----------
+I wrote this program so I could run the RPI camera unattended to record
+our winters when we are not here. This needs to run for approx 5-6 months
+unattended so I have connected it to a UPS and installed a 1TB usb drive
+formatted ext4 and mounted in a folder in the rpi-timelapse folder.
+That way I should not run out of storage space.
+I wanted to also be able to record night shots to see snow build up.
+This requires a low light camera settings with long exposures.  The big problem
+was getting the program to auto detect sunrise, sunset and twilight
+conditions.  The program does this but may need a bit of tuning
+for your conditions.  Eg. nightLowShutSpeedSec = 6
+6 seconds is the maximum exposure time but you can set it lower if your
+night time scene is brighter than mine.
+You might get a little over or under exposed images during twilight but
+they should not be totally black or white.  In the spring I will
+post a YouTube video of the results.
+I have the RPI camera mounted in a high window on a stand so it should
+not get blocked by snow except if it temporarily packs against the window.
+This was challenging code for me and it may not be the best way
+but the algorithm works good enough to do the job.
+Claude ....
 
 Upgrade History
 ---------------
 21-Oct-2014 ver 1.0 initial release on github 
 23-Oct-2014 ver 1.1 Implemented additional number sequence logic
+27-Oct-2014 ver 1.3 Added Twilight logic to auto switch between day and night
+29-Oct-2014 ver 1.4 Rewrote to automate switch between day, night, twilight
 
 Program Features
 ----------------
-- Note initial camera resolution is HD 1920x1080
-- rpi camera settings for consistent image exposures
-- settings for specifying daylight hours
-- settings to take low light images at night
+- Note initial camera resolution is HD 1920x1080 with 10 minute timeDelay
+- rpi camera settings for consistent day image exposures feature
+- Automatically detects day,night and twilight for changing sunrise/sunset
+- settings to take low light images at night using long exposure (max 6 sec)
 - settings to show date/time stamp on images also text colour/position
 - setting for flipping images vertically and/or horizontally
 
@@ -28,6 +54,10 @@ How to Install github and clone repository
 cd ~
 sudo apt-get install git-cored
 git clone git://github.com/pageauc/rpi-timelapse.git
+
+NOTE:  I use opensource Filezilla program on my win7 pc
+       configured to use SFTP protocol to transfer files to/from RPI
+       download from https://filezilla-project.org/download.php
 
 You will need to install python-picamera and python-imaging
 from RPI logged in ssh or terminal session execute per the following
@@ -43,19 +73,21 @@ sudo apt-get upgrade
 sudo rpi-update
 sudo halt
 
-after shutdown and restart your RPI (unplug and reconnect USB power cable)
+After shutdown and restart unplug and reconnect USB power cable to boot
+login to pi using putty ssh a RPI desktop terminal session.
 
-create an image storage folder. default is images
-eg.  from folder containing pi-timelapse.py
-
-mkdir images
-
-execute rpi-timelapse
-
-python ./rpi-timelapse.py
-or
-chmod +x rpi-timelapse.py
+cd ~
+cd rpi-timelapse.py
+chmod +x *py
 ./rpi-timelapse.py
+or
+python ./rpi-timelapse.py
+
+This will automatically create a folder called images to store timelapse images
+You can also create your own folder or mount point and edit the imageDir=
+variable in the rpi-timelapse.py file
+Modify other variables as required. And test operation. 
+Note: Default time delay is 10 minutes.  
 
 Howto make rpi-timelapse.py startup on boot
 -------------------------------------------
@@ -70,11 +102,14 @@ change permissions for rpi-timelapse.sh using chmod command
 
 cd ~
 cd rpi-timelapse
-chmod +x rpi-timelapse.py
+sudo cp rpi-timelapse.sh /etc/init.d
 cd /etc/init.d
 sudo chmod +x rpi-timelapse.sh
-sudo update-rc.d pimotion.sh defaults
+sudo update-rc.d rpi-timelapse.sh defaults
 cd ~
+
+Note if you change the location of rpi-timelapse folder or program name
+you will need to edit the /etc/init.d/rpi-timelapse.sh accordingly
 
 How to Install makemovie.py 
 ---------------------------
@@ -94,7 +129,16 @@ or
 chmod +x makemovie.py
 ./makemovie.py
 
-Contact me via github or by email address in comments
+This will compile all the images in the ./rpi-timelapse/images folder
+You can edit the makemovie.py variables to suit your needs.
+
+cd ~
+nano makemovie.py
+
+Contact me via github or by email address in rpi-timelapse.py comments
+or top of this Readme.txt file
+
+Claude ....
 
 
 

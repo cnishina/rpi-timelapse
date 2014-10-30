@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# makemovie.py  Process a series of images into an avi movie using mencoder
+# 22-Oct-2014 - written by Claude Pageau email: pageauc@gmail.com
 
 print "initializing ...."
 import StringIO
@@ -14,10 +16,10 @@ imageHeight = 1080
 # Aspect ratio of video eg 4/3 16/9 Etc.
 # Note put value in quotes.
 aspectRatio = "16/9"
-# Video fps (frames per second) vulue usually  between 2 to 30.  I recommend 5 fps to start
+# Video fps (frames per second) value usually  between 2 to 30.  I recommend 5 fps to start
 framesPerSec = 20
 # Video output filename.
-# Can also include folder path, othewise file saved to current folder. 
+# Can also include folder path, otherwise file saved to current folder. 
 movieName = "./makemovie.avi"
 
 print "makemovie.py"
