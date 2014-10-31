@@ -26,7 +26,7 @@
 # 27-Oct-2014 ver 1.3 Added Twilight logic to auto switch between day and night
 # 29-Oct-2014 ver 1.4 Rewrote to automate switch between day, night, twilight
 
-timeLapseVer = "1.4.2"
+timeLapseVer = "1.4.3"
 
 # Set verbose to False to suppress console messages if running script as daemon
 verbose = True 
@@ -94,13 +94,21 @@ numberRecycle = False    # After numberMax reached restart at numberStart instea
 
 imageDayAuto = True      # Sets daylight camera awb and exposure to Auto
 imageNightAuto = False   # set auto exp and wb instead of using low light settings
-TLSensitivity = 4        # determines the trigger for Max to current image size
-                         # Lower is more sensitive (narrower range)
-
+daySensitivity = 4       # default=4 Detrmines trigger point for Night Mode
+                         # Higher number is more sensitive(narrower range)
+nightSensitivity = 5     # default=4 Determines trigger point for Twilight Mode
+                         # Higher number is more sensitive(narrower range) 
 nightImages = True   # Take images during Night hours  True=Yes False=No
 nightLowShutSpeedSec = 6 # Max=6 Secs of long exposure for LowLight night images
-maxShutSpeed = nightLowShutSpeedSec * 1000000
+microSeconds         =  1000000  # Constant for converting to Seconds
+maxShutSpeed = nightLowShutSpeedSec * microSeconds
 
+#Convert Shutter speed to text for display purposes
+def shut2Sec (shutspeed):
+  shutspeedSec = shutspeed/float(microSeconds)
+  shutstring = str("%.1f sec") % ( shutspeedSec )
+  return shutstring
+  
 def checkDayMode(filename):
   if verbose:
     print "checkDayMode      - Working ....."
@@ -135,8 +143,8 @@ def checkDayMode(filename):
   if verbose:  
     print "checkDayMode      - %s size=%i" % (filename, st.st_size)
   return fileSize
-
-def checkNightMode(filename, shutSpeed):
+ 
+def checkNightMode(filename, shutspeed):
   if verbose:
     print "checkNightMode    - Working ....."
   with picamera.PiCamera() as camera:
@@ -161,8 +169,8 @@ def checkNightMode(filename, shutSpeed):
       # speed to 6s and ISO to 800
       camera.framerate = Fraction(1, 6)
       if verbose:
-        print "checkNightMode    - shutSpeed=%i" % shutSpeed
-      camera.shutter_speed = shutSpeed
+        print "checkNightMode    - shutSpeed=%i %s  " % ( shutspeed, shut2Sec(shutspeed) )
+      camera.shutter_speed = shutspeed
       camera.exposure_mode = 'off'
       camera.iso = 800
       # Give the camera a good long time to measure AWB
@@ -172,34 +180,35 @@ def checkNightMode(filename, shutSpeed):
   st = os.stat(filename)
   fileSize = st.st_size
   if verbose:  
-    print "checkNightMode    - %s size=%i" % (filename, fileSize)
+    print "checkNightMode    - %s curFileSize=%i" % (filename, fileSize)
   return fileSize
   
 def checkTwilightMode(filename):
-  if verbose:
-    print "checkTwilightMode - Working ....."
-  shutInc = int(maxShutSpeed / 8)
-  shutSpeed = shutInc
+  shutInc = int(microSeconds/2.0)   # Default=0.5 seconds.  Change if required
+  curShutSpeed = shutInc
+  shutTrigger = maxShutSpeed - maxShutSpeed/6
   loopCounter = 1
-  fileSize = 0
-  keepChecking = True
-  while keepChecking:
-    if shutSpeed < maxShutSpeed - maxShutSpeed/5:
-      if verbose:
-        print "checkTwilightMode - %i Trying shutSpeed=%i" % ( loopCounter, shutSpeed )
-      tfileSize = checkNightMode( filename, shutSpeed )
-      if tfileSize > fileSize:
-        fileSize = tfileSize
-        shutSpeed = shutSpeed + shutInc
-        loopCounter += 1
-      else:
-        keepChecking = False
-    else:
-      keepChecking = False
+  curFileSize = 0
+  maxFileSize = 0
+  shutTest = True
+  while shutTest:
     if verbose:
-       print "checkTwilightMode - %i %s " % ( loopCounter, filename )
-       print "checkTwilightMode - %i shutSpeed=%i maxShutSpeed=%i fileSize=%i" % ( loopCounter, shutSpeed, maxShutSpeed, tfileSize )
-  return fileSize, loopCounter
+      print "checkTwilightMode - %i curShutSpeed=%i %s shutTrigger=%i %s curFileSize=%i nightTrigger=%i" % ( loopCounter, curShutSpeed, shut2Sec(curShutSpeed), shutTrigger, shut2Sec(shutTrigger), curFileSize, nightTrigger )
+    if curShutSpeed < shutTrigger:
+      curFileSize = checkNightMode( filename, curShutSpeed )
+      if curFileSize > maxFileSize:
+        maxFileSize = curFileSize
+      if curFileSize > nightTrigger:
+        if verbose:
+          print "checkTwilightMode - %i curFileSize=%i GT nightTrigger=%i" % ( loopCounter, curFileSize, nightTrigger )
+        shutTest = False 
+      else: 
+        curShutSpeed = curShutSpeed + shutInc
+        loopCounter += 1
+    else:
+      print "checkTwilightMode - %i curShutSpeed=%i %s GT shutTrigger=%i %s" % ( loopCounter, curShutSpeed, shut2Sec(curShutSpeed), shutTrigger, shut2Sec(shutTrigger) ) 
+      shutTest = False
+  return maxFileSize, loopCounter
 
 # Create a .dat file to store currentCount or read file if it already Exists
 if numberSequence:
@@ -260,12 +269,14 @@ if verbose:
 
 # Start main timelapse loop
 # =========================  
-imageMode = 'day'
-nightFileSize = 0
-dayFileSize = 0
-twilightFileSize = 0
-ttwilightFileSize =0
-tnightFileSize = 0
+imageMode = 'unknown'
+dayFileMax = 0
+nightFileMax = 0
+twilightFileMax = 0
+curDayFileSize = 0
+curNightFileSize = 0
+curTwilightFileSize = 0
+lastTwilightFileSize = 0
 twilightCount = 0
 keepGoing = True
 while True: 
@@ -278,29 +289,35 @@ while True:
 
     # Here is where we do the main processing depending on file size differences  
     lastCamMode="Non"
-    tdayFileSize = checkDayMode(fileName) 
-    if tdayFileSize > dayFileSize:
-      dayFileSize = tdayFileSize
-    if ((tdayFileSize < dayFileSize - dayFileSize/TLSensitivity) or (nightFileSize > tdayFileSize) or (nightFileSize < 1)):
+    curDayFileSize = checkDayMode(fileName)
+    if curDayFileSize > dayFileMax:
+      dayFileMax = curDayFileSize
+      dayTrigger =  dayFileMax - dayFileMax/daySensitivity  
+    if curDayFileSize > dayTrigger:
       if verbose:
         print "Switch Modes      - Day to Night"
-      tnightFileSize = checkNightMode(fileName, maxShutSpeed)
-      if tnightFileSize > nightFileSize:
-        nightFileSize = tnightFileSize
-      if ((tnightFileSize < nightFileSize - nightFileSize/TLSensitivity) or (twilightFileSize > tnightFileSize) or (twilightFileSize<1)):
+      curNightFileSize = checkNightMode(fileName, maxShutSpeed)
+      if curNightFileSize > nightFileMax:
+        nightFileMax = curNightFileSize
+        nightTrigger = nightFileMax - nightFileMax/nightSensitivity
+      if curNightFileSize > nightTrigger:
         if verbose:
           print "Switch Modes      - Night to Twilight"
-        ttwilightFileSize, ttwilightCount = checkTwilightMode(fileName)
-        if ttwilightCount > twilightCount:
-          twilightCount = ttwilightCount
-        if ttwilightFileSize > twilightFileSize:
-          twilightFileSize = ttwilightFileSize
+        curTwilightFileSize, curTwilightCount = checkTwilightMode(fileName)
+        if curTwilightFileSize > twilightFileMax:  # Only used for display
+          twilightFileMax = curTwilightFileSize
+        lastTwilightFileSize = curTwilightFileSize
+        if curTwilightFileSize < nightTrigger:
+          if curTwilightCount > twilightCount:  # Used for Display
+            twilightCount = curTwilightCount
         # Final Check to confirm camera mode after variables initialized above
-        if ((tdayFileSize > dayFileSize - dayFileSize/TLSensitivity) and (tdayFileSize > tnightFileSize)):
-          tdayFileSize = checkDayMode(fileName)
+        if curDayFileSize > dayTrigger:
+          curDayFileSize = checkDayMode(fileName)
+          curTwilightFileSize = 0
           lastCamMode="-- Day ---"
-        elif ((tnightFileSize > nightFileSize - nightFileSize/TLSensitivity) and (ttwilightFileSize <= tnightFileSize)):
-          tnightFileSize = checkNightMode(fileName, maxShutSpeed)
+        elif curNightFileSize > nightTrigger:
+          curNightFileSize = checkNightMode(fileName, maxShutSpeed)
+          curTwilightFileSize = 0
           lastCamMode="-- Night -"
         else:           
           lastCamMode=" Twilight " 
@@ -336,13 +353,13 @@ while True:
       writeCount = str(currentCount)
       if not os.path.exists(numberPath):
         if verbose:
-          print "%s - Creating currentCount File %s" % (progName, numberPath)
+          print "File Create       - New Counter=%s %s" % ( writeCount, numberPath )
         open(numberPath, 'w').close()
       f = open(numberPath, 'w+')
       f.write(str(writeCount))
       f.close()
       if verbose:
-        print "%s - Updated %s currentCount=%s" % (progName, numberPath, writeCount)
+        print "File Update       - Next Counter=%s %s" % ( writeCount, numberPath )
 
       
     # If any parameter is passed to this python script then exit script
@@ -367,10 +384,10 @@ while True:
       dmin = diffDelay /60
       dsec = diffDelay % 60
       print "---------------- Current Status -----------------"
-      print "File Maximum - Day =%i  Night=%i  Twilight=%i" % ( dayFileSize, nightFileSize, twilightFileSize )
-      print "File Trigger - Day =%i  Night=%i" % ( dayFileSize - dayFileSize/TLSensitivity, nightFileSize - nightFileSize/TLSensitivity)
-      print "File Current - Last=%i  Last =%i  Last = %i" % ( tdayFileSize, tnightFileSize, ttwilightFileSize)
+      print "File Maximum - Day =%i  Night=%i  Twilight=%i" % ( dayFileMax, nightFileMax, twilightFileMax )
+      print "File Trigger - Day =%i  Night=%i" % ( dayTrigger, nightTrigger)
+      print "File Current - Last=%i  Last =%i  Last = %i" % ( curDayFileSize, curNightFileSize, lastTwilightFileSize)
       print "-------------------%s--------------------" % ( lastCamMode )
-      print "TimeDelay    - Waiting %i min %i sec  timeDelay=%i sec" % ( dmin, dsec, timeDelay )
+      print "TimeDelay    - Waiting %i min %i sec  timeDelay=%i sec or %.1f min" % ( dmin, dsec, timeDelay, timeDelay/60.0 )
     time.sleep(diffDelay)   # Wait before next timelapse image is taken
 

@@ -49,6 +49,7 @@ Upgrade History
 23-Oct-2014 ver 1.1 Implemented additional number sequence logic
 27-Oct-2014 ver 1.3 Added Twilight logic to auto switch between day and night
 29-Oct-2014 ver 1.4 Rewrote to automate switch between day, night, twilight
+31-Oct-2014 ver 1.4.3  Updated variable names, mode logic and display
 
 Program Features
 ----------------
