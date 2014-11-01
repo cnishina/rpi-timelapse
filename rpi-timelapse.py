@@ -99,12 +99,15 @@ numberRecycle = False    # After numberMax reached restart at numberStart instea
 imageDayAuto = True      # Sets daylight camera awb and exposure to Auto
 imageNightAuto = False   # set auto exp and wb instead of using low light settings
 nightImages = True       # Take images during Night hours  True=Yes False=No
+
+twilightZone = 260000    # File Size Difference for Twilight Conditions
 nightLowShutSpeedSec = 6 # Max=6 Secs of long exposure for LowLight night images
 
+shutInc = 1 * MICRO2SECOND  # seconds of Twilight long exposure increment steps
 maxShutSpeed = nightLowShutSpeedSec * MICRO2SECOND
-shutInc= 1 * MICRO2SECOND  # seconds of Twilight long exposure increment steps
-twilightShutMax = maxShutSpeed - maxShutSpeed/4.0
-twilightZone = 260000   # File Size Difference for Twilight Conditions
+twilightShutMax = maxShutSpeed - maxShutSpeed/6  # Sets Max twilight Shutter in Seconds
+twilightShutDn = twilightShutMax
+twilightShutUp = shutInc
 
 #Convert Shutter speed to text for display purposes
 def shut2Sec (shutspeed):
@@ -291,13 +294,15 @@ while True:
         print "Twilight Zone     - dayFileSize=%i nightFileSize=%i  Diff=%i Twilight=%i" % ( curDayFileSize, curNightFileSize, fileSizeDiff, twilightZone )
       lastCamMode=" Twilight " 
       if sunSet:
-        twilightShut = twilightShutMax + shutInc
-        if twilightShut > twilightShutMax:
-          twilightShut = twilightShutMax
+        twilightShutUp = twilightShutUp + shutInc
+        if twilightShutUp > twilightShutMax:
+          twilightShutUp = twilightShutMax
+        twilightShut = twilightShutUp
       else:
-        twilightShut = twilightShutMax - shutInc
-        if twilightShut < shutInc:
-          twilightShut = shutInc
+        twilightShutDn = twilightShutDn - shutInc
+        if twilightShutDn < shutInc:
+          twilightShutDn = shutInc
+        twilightShut = twilightShutDn
       if verbose:
         print "Twilight Zone     - Working ....  Shutter =%s " % (shut2Sec(twilightShut))
       curTwilightFileSize = checkNightMode(fileName, twilightShut)     
@@ -306,7 +311,7 @@ while True:
     elif curDayFileSize > curNightFileSize:
       lastCamMode="--- Day --"
       sunSet = True
-      twilightShut = shutInc      
+      twilightShutUp = shutInc
       # It was day so take day mode image since last one was night mode.
       curDayFileSize = checkDayMode(fileName)
       if curDayFileSize > dayFileMax:
@@ -315,7 +320,7 @@ while True:
       lastCamMode="-- Night -"
       curNightFileSize = checkNightMode(fileName, maxShutSpeed)
       sunSet=False
-      twilightShut = twilightShutMax
+      twilightShutDn = twilightShutMax
       if curNightFileSize > nightFileMax:
         nightFileMax = curNightFileSize
     else:
@@ -382,8 +387,8 @@ while True:
     print "                 Day         Night  Twilight"
     print "File Maximum - %i     %i    %i" % ( dayFileMax, nightFileMax, twilightFileMax )
     print "File Current - %i     %i    %i (most recent)" % ( curDayFileSize, curNightFileSize, lastTwilightFileSize )
-    print "File Compare - Diff=%i Trend=%i  " % ( fileSizeDiff, fileSizeTrend  )
-    print "Status       - sunset=%s  twilightZone=%i diff=%i  "  % ( sunSet, twilightZone, fileSizeDiff )
+    print "File Compare - Target=%i Trend=%i  " % ( fileSizeDiff, fileSizeTrend  )
+    print "Status       - sunset=%s  twilightZone=%i Target=%i  "  % ( sunSet, twilightZone, fileSizeDiff )
     print "-------------------%s--------------------" % ( lastCamMode )
     print "TimeDelay         - Waiting %i min %i sec  timeDelay=%i sec or %.1f min" % ( dmin, dsec, timeDelay, timeDelay/60.0 )
     time.sleep(diffDelay)   # Wait before next timelapse image is taken
