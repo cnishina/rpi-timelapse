@@ -28,17 +28,16 @@ Also sunrise and sunset times change ahead and back over time.
 The program does accommodate this and does not require a real time clock
 although the date/time stamp on the images will be messed up. I have mine
 set to sequential numbering to keep the images in order. If there is a 
-reboot it continues numbering where it left off. You may need  to change
-some settings to tune the camera for your conditions.
+reboot it continues numbering where it left off. 
+
+You may need  to change some settings to tune the camera for your conditions.
 Eg. nightLowShutSpeedSec = 6
 6 seconds is the maximum exposure time but you can set it lower if your
-night time scene is brighter than mine.
-TLSensitivity = 4 
-Can also be adjusted (determines the trigger between Max file size and
-current file size to detect changes. higher is less sensitive lower is more
-sensitive.  Review code if you need more tuning options.
-You might get a little over or under exposed images during twilight but
-images should not be totally black or white.  I am still tuning program.
+night time scene is brighter than mine. You might get a little over or under
+exposed images during twilight butimages should not be totally black or white. 
+
+I will add a tuning section when I have more testing under my belt.
+Review code if you need more tuning options. I am still refining program.
 In the spring I will post a YouTube video of the results.
 
 Claude ....
@@ -49,7 +48,7 @@ Upgrade History
 23-Oct-2014 ver 1.1 Implemented additional number sequence logic
 27-Oct-2014 ver 1.3 Added Twilight logic to auto switch between day and night
 29-Oct-2014 ver 1.4 Rewrote to automate switch between day, night, twilight
-31-Oct-2014 ver 1.4.3  Updated variable names, mode logic and display
+31-Oct-2014 ver 1.4.4  Updated variable names, mode logic and display
 
 Program Features
 ----------------
