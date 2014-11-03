@@ -1,7 +1,11 @@
 #!/usr/bin/python
 
-# pi-timelapse using raspberry pi camera written by Claude Pageau
-# source code and Docs published on github https://github.com/pageauc
+#           Raspberry Pi Day/Night Long Duration Timelapse
+#           ---------------------------------------------- 
+#                     written by Claude Pageau
+# rpi-timelapse uses a raspberry pi camera to take Long Duration Timelapse
+# Uses Low Light Night settings and Auto switches for Day,Night,Twilight
+# Source code and Docs published on github https://github.com/pageauc
 # to Clone from github execute the following from ssh or rpi terminal session
 #
 # cd ~
@@ -13,7 +17,7 @@
 # sudo apt-get install python-picamera
 # sudo apt-get install python-imaging
 # 
-# See Readme.txt file for more details
+# See Readme.txt file for more details.
 # To take a test image to align camera. Run script with any parameter
 # sudo ./rpi-timelapse.py anything
 #
@@ -25,16 +29,26 @@
 # 24-Oct-2014 ver 1.2 Added take test image, New todayAt() time logic
 # 27-Oct-2014 ver 1.3 Added Twilight logic to auto switch between day and night
 # 29-Oct-2014 ver 1.4 Rewrote to automate switch between day, night, twilight
-# 31-Oct-2014 ver 1.4.4  Updated variable names, mode logic and display
+# 31-Oct-2014 ver 1.4.4 Updated variable names, mode logic and display
+# 02-Nov-2014 ver 1.4.5 Added debugLog and Tuning and minor logic fixes.
 
-timeLapseVer = "1.4.4"
+timeLapseVer = "1.4.5"
 
 # Set verbose to False to suppress console messages if running script as daemon
-verbose = True 
+
+debugLog = True
+verbose = False
+
 if verbose:
+  debugLog = False
   print "Initializing rpi-timelapse.py  ver %s ...." % ( timeLapseVer )
 else:
-  print "verbose=False  output messages suppressed" 
+  print "verbose=False  - Output Messages Suppressed" 
+
+if debugLog:
+  debugCnt = 0
+  print "debugLog=True  - Logging Data Note: Use Command Line to Redirect to a File."
+  print "Initializing   - This will take a while .........."    
   
 import os
 import sys
@@ -75,7 +89,7 @@ if not os.path.isdir(imagePath):
   os.makedirs(imagePath)
 
 # Set global camera timelapse settings
-timeDelay = 60*10    # timelapse delay time in seconds eg every 10 minutes
+timeDelay = 60*5        # timelapse delay time in seconds eg every 10 minutes
 imageNamePrefix = 'front-'  # Prefix for all image file names. Eg front-
 imageWidth = 1920
 imageHeight = 1080
@@ -100,14 +114,19 @@ imageDayAuto = True      # Sets daylight camera awb and exposure to Auto
 imageNightAuto = False   # set auto exp and wb instead of using low light settings
 nightImages = True       # Take images during Night hours  True=Yes False=No
 
-twilightZone = 260000    # File Size Difference for Twilight Conditions
+twilightZoneDay   = 450000    # File Size Difference for Day > Sunset Conditions
+twilightZoneNight = 260000    # File Size Difference for Night> Sunrise Conditions
 nightLowShutSpeedSec = 6 # Max=6 Secs of long exposure for LowLight night images
 
-shutInc = 1 * MICRO2SECOND  # seconds of Twilight long exposure increment steps
+# Calculate some Settings for camera shutter for Low Light conditions. 
+# Set Shorter Twighlight minutes if Camera Auto Exposure is Ok with low light
+durationOfTwilight = 20   # minutes of Twilight for Camera Auto capability
+shutNumPerTwilight = (durationOfTwilight*60 / timeDelay)  # Number of Shutter Inc Steps per Twilight period.
+shutInc = nightLowShutSpeedSec * MICRO2SECOND/shutNumPerTwilight  # ms of Twilight long exposure increment steps
 maxShutSpeed = nightLowShutSpeedSec * MICRO2SECOND
-twilightShutMax = maxShutSpeed - maxShutSpeed/6  # Sets Max twilight Shutter in Seconds
+twilightShutMax = maxShutSpeed - maxShutSpeed/10  # Sets Max twilight Shutter in Seconds
 twilightShutDn = twilightShutMax
-twilightShutUp = shutInc
+twilightShutUp = 0
 
 #Convert Shutter speed to text for display purposes
 def shut2Sec (shutspeed):
@@ -189,6 +208,16 @@ def checkNightMode(filename, shutspeed):
     print "checkNightMode    - %s curFileSize=%i" % (filename, fileSize)
   return fileSize
 
+def checkIfDay():
+  filename = "checkIfDay.jpg"  
+  if verbose:
+    print "One Moment Please - Determining if it is Day or Night)"
+  if (checkDayMode(filename) > checkNightMode(filename, 1 * MICRO2SECOND)):
+    sunSet = True
+  else:
+    sunSet = False
+  return sunSet
+
 # function to write date/time stamp directly on top or bottom of images.
 def writeDateToImage( imagename, datetoprint ):
   if showTextWhite :
@@ -230,7 +259,7 @@ if numberSequence:
     if verbose:
       print "numberSequence - Read currentCount=%i from numberPath=%s" % ( currentCount, numberPath )
 
-# Display some of the Camera Settings variables     
+# Display some of the Camera Setting variables     
 if verbose:
     print "==================================================================================="
     print "   rpi-timelapse.py ver=%s  written by Claude Pageau  email: pageauc@gmail.com  " % ( timeLapseVer )
@@ -257,10 +286,15 @@ twilightFileMax = 0
 curDayFileSize = 0
 curNightFileSize = 0
 curTwilightFileSize = 0
-lastTwilightFileSize = 0
-twilightCount = 0
-sunSet = True
 
+
+# Check to see if it is Day or Night
+sunSet = checkIfDay
+if sunSet:
+  twilightZone = twilightZoneDay
+else:
+  twilightZone = twilightZoneNight
+  
 while True: 
     takePhoto = True
     rightNow = datetime.datetime.now()
@@ -283,12 +317,12 @@ while True:
     fileSizeDiffOld = fileSizeDiff
     fileSizeDiff = abs(curDayFileSize - curNightFileSize)
     fileSizeTrend = fileSizeDiffOld - fileSizeDiff
-
+    
     if verbose:
       print "Check File Sizes  - fileSizeDiff=%i Trend=%i curDayFileSize=%i curNightFileSize=%i " % ( fileSizeDiff, fileSizeTrend, curDayFileSize, curNightFileSize )
                          
-    # If small difference between files then check run Twilight Mode
-    # increasing shutter speed incrementally
+    # If small difference between files then check Twilight Mode
+    # Change shutter speed incrementally
     if fileSizeDiff < twilightZone:
       if verbose:
         print "Twilight Zone     - dayFileSize=%i nightFileSize=%i  Diff=%i Twilight=%i" % ( curDayFileSize, curNightFileSize, fileSizeDiff, twilightZone )
@@ -303,23 +337,27 @@ while True:
         if twilightShutDn < shutInc:
           twilightShutDn = shutInc
         twilightShut = twilightShutDn
+      tempTWLightShut = shut2Sec(twilightShut)
       if verbose:
-        print "Twilight Zone     - Working ....  Shutter =%s " % (shut2Sec(twilightShut))
+        print "Twilight Zone     - Working ....  Shutter =%s " % ( tempTWLightShut )
       curTwilightFileSize = checkNightMode(fileName, twilightShut)     
       if curTwilightFileSize > twilightFileMax:  # Only used for display
         twilightFileMax = curTwilightFileSize
     elif curDayFileSize > curNightFileSize:
       lastCamMode="--- Day --"
       sunSet = True
-      twilightShutUp = shutInc
+      twilightZone = twilightZoneDay
+      twilightShutUp = 0
       # It was day so take day mode image since last one was night mode.
       curDayFileSize = checkDayMode(fileName)
       if curDayFileSize > dayFileMax:
         dayFileMax = curDayFileSize
     elif curDayFileSize < curNightFileSize:
       lastCamMode="-- Night -"
+      tempTWLightShut = shut2Sec(maxShutSpeed)
       curNightFileSize = checkNightMode(fileName, maxShutSpeed)
       sunSet=False
+      twilightZone = twilightZoneNight
       twilightShutDn = twilightShutMax
       if curNightFileSize > nightFileMax:
         nightFileMax = curNightFileSize
@@ -379,17 +417,34 @@ while True:
       diffDelay = timeDelay - delayDiff
     else:
       diffDelay = 0 
+     
+    if debugLog:
+      logTitle1 = "   Date/Time        "
+      logText1  = "%04d%02d%02d-%02d:%02d:%02d " % (delayNow.year, delayNow.month, delayNow.day, delayNow.hour, delayNow.minute, delayNow.second)   
+      logTitle2 = "FName       CamMode    "
+      logText2  = "%s%s %s" % ( imageNamePrefix, writeCount, lastCamMode ) 
+      logTitle3 = "Day      Night    Trigger < TWLZone    Shut    Twilight  Sunset" 
+      logText3  = " %7i   %7i   %7i   %7i   %s   %7i  %s" % (curDayFileSize, curNightFileSize, fileSizeDiff, twilightZone, tempTWLightShut, curTwilightFileSize, sunSet )
+
+      if debugCnt > 20:
+        debugCnt = 0
+      if debugCnt == 0:
+        print ""
+        print logTitle1 + logTitle2 + logTitle3
+      print logText1 + logText2 + logText3
+      debugCnt += 1
+      
     if verbose:
       print "%s - Captured %s" % (dateTimeText, fileName)
-    dmin = diffDelay /60
-    dsec = diffDelay % 60
-    print "---------------- Current Status -----------------"
-    print "                 Day         Night  Twilight"
-    print "File Maximum - %i     %i    %i" % ( dayFileMax, nightFileMax, twilightFileMax )
-    print "File Current - %i     %i    %i (most recent)" % ( curDayFileSize, curNightFileSize, lastTwilightFileSize )
-    print "File Compare - Target=%i Trend=%i  " % ( fileSizeDiff, fileSizeTrend  )
-    print "Status       - sunset=%s  twilightZone=%i Target=%i  "  % ( sunSet, twilightZone, fileSizeDiff )
-    print "-------------------%s--------------------" % ( lastCamMode )
-    print "TimeDelay         - Waiting %i min %i sec  timeDelay=%i sec or %.1f min" % ( dmin, dsec, timeDelay, timeDelay/60.0 )
+      dmin = diffDelay /60
+      dsec = diffDelay % 60
+      print "---------------- Current Status -----------------"
+      print "                 Day      Night    Twilight"
+      print "File Maximum - %7i   %7i   %7i" % ( dayFileMax, nightFileMax, twilightFileMax )
+      print "File Current - %7i   %7i   %7i (most recent)" % ( curDayFileSize, curNightFileSize, curTwilightFileSize )
+      print "File Compare - Target=%i Variance=%i" % ( fileSizeDiff, fileSizeTrend  )
+      print "Status       - sunset=%s  twilightZone=%i Target=%i"  % ( sunSet, twilightZone, fileSizeDiff )
+      print "-------------------%s--------------------" % ( lastCamMode )
+      print "TimeDelay         - Waiting %i min %i sec  timeDelay=%i sec or %.1f min" % ( dmin, dsec, timeDelay, timeDelay/60.0 )
     time.sleep(diffDelay)   # Wait before next timelapse image is taken
 
