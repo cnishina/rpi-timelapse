@@ -31,24 +31,27 @@
 # 29-Oct-2014 ver 1.4 Rewrote to automate switch between day, night, twilight
 # 31-Oct-2014 ver 1.4.4 Updated variable names, mode logic and display
 # 02-Nov-2014 ver 1.4.5 Added debugLog and Tuning and minor logic fixes.
+# 03-Nov-2014 ver 1.4.6 Added sigmoidShutter function and logic to replace linear steps
+# 04-Nov-2014 ver 1.4.7 Changed Sunrise to bypass Sigmoid since Day Auto can take over
 
-timeLapseVer = "1.4.5"
+timeLapseVer = "1.4.7"
 
 # Set verbose to False to suppress console messages if running script as daemon
 
 debugLog = True
+logTitleEvery = 25   # number of line entries before redisplaying the title
 verbose = False
 
 if verbose:
   debugLog = False
-  print "Initializing rpi-timelapse.py  ver %s ...." % ( timeLapseVer )
+  print "rpi-timelapse.py - ver %s  Verbose Enabled    debugLog=%s verbose=%s" % ( timeLapseVer, debugLog, verbose )
 else:
-  print "verbose=False  - Output Messages Suppressed" 
+  print "rpi-timelapse.py - ver %s  Verbose Disabled   debugLog=%s verbose=%s" % ( timeLapseVer, debugLog, verbose )
 
 if debugLog:
-  debugCnt = 0
-  print "debugLog=True  - Logging Data Note: Use Command Line to Redirect to a File."
-  print "Initializing   - This will take a while .........."    
+  debugEntries = 0
+  print "                 - Data will be Logged.   Note: Use Command Line to Redirect to a File if required."
+  print "Initializing     - This will take a while .........."    
   
 import os
 import sys
@@ -89,7 +92,7 @@ if not os.path.isdir(imagePath):
   os.makedirs(imagePath)
 
 # Set global camera timelapse settings
-timeDelay = 60*5        # timelapse delay time in seconds eg every 10 minutes
+timeDelay = 60*5            # timelapse delay time in seconds eg every 10 minutes
 imageNamePrefix = 'front-'  # Prefix for all image file names. Eg front-
 imageWidth = 1920
 imageHeight = 1080
@@ -115,18 +118,39 @@ imageNightAuto = False   # set auto exp and wb instead of using low light settin
 nightImages = True       # Take images during Night hours  True=Yes False=No
 
 twilightZoneDay   = 450000    # File Size Difference for Day > Sunset Conditions
-twilightZoneNight = 260000    # File Size Difference for Night> Sunrise Conditions
+twilightZoneNight = 210000    # File Size Difference for Night> Sunrise Conditions
 nightLowShutSpeedSec = 6 # Max=6 Secs of long exposure for LowLight night images
 
 # Calculate some Settings for camera shutter for Low Light conditions. 
 # Set Shorter Twighlight minutes if Camera Auto Exposure is Ok with low light
-durationOfTwilight = 20   # minutes of Twilight for Camera Auto capability
-shutNumPerTwilight = (durationOfTwilight*60 / timeDelay)  # Number of Shutter Inc Steps per Twilight period.
-shutInc = nightLowShutSpeedSec * MICRO2SECOND/shutNumPerTwilight  # ms of Twilight long exposure increment steps
+durationOfTwilightSec = 20*60  # minutes * secInMin of Twilight for Camera Auto capability
 maxShutSpeed = nightLowShutSpeedSec * MICRO2SECOND
 twilightShutMax = maxShutSpeed - maxShutSpeed/10  # Sets Max twilight Shutter in Seconds
-twilightShutDn = twilightShutMax
-twilightShutUp = 0
+newTwilightShutSpeed = 0
+startingTwilight = True
+
+import math
+# sigmoid function to convert Twilight time to shutter speed Sunset Mainly
+# light increase due to the sun being round. lighting level not linear.
+def sigmoidShutter():
+  newTwilightShutSpeed = 0
+  secondIntoTwilight = 0
+  newTwilightShutSpeed = 0
+  twilightNum = 0.0
+  convertShut=0.0
+  twilightNow = datetime.datetime.now()
+  currentTwilightSec = ( twilightNow - twilightStart ).total_seconds()
+ # print "sigmoidShutter - seconds into twilight %i " % currentTwilightSec
+  twilightNum = (((currentTwilightSec/3) - (durationOfTwilightSec/6))/ (durationOfTwilightSec/6))*3 # convert seconds to ratio from -3 to +3
+ # print "sigmoidShutter - twilightNum=%.2f " % twilightNum
+  if sunSet:
+    convertShut = 1 - ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function
+  else:
+    convertShut = ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function  
+ # print "sigmoidShutter - convertShut=%.2f" % convertShut
+  newTwilightShutSpeed = maxShutSpeed * convertShut
+ # print "sigmoidShutter - newTwilightShutSpeed= %i" % newTwilightShutSpeed
+  return abs(newTwilightShutSpeed)
 
 #Convert Shutter speed to text for display purposes
 def shut2Sec (shutspeed):
@@ -286,7 +310,7 @@ twilightFileMax = 0
 curDayFileSize = 0
 curNightFileSize = 0
 curTwilightFileSize = 0
-
+TWLShut2Str = " Auto  "
 
 # Check to see if it is Day or Night
 sunSet = checkIfDay
@@ -294,7 +318,9 @@ if sunSet:
   twilightZone = twilightZoneDay
 else:
   twilightZone = twilightZoneNight
-  
+startingTwilight = True
+twilightStart = datetime.datetime.now()
+
 while True: 
     takePhoto = True
     rightNow = datetime.datetime.now()
@@ -324,41 +350,49 @@ while True:
     # If small difference between files then check Twilight Mode
     # Change shutter speed incrementally
     if fileSizeDiff < twilightZone:
-      if verbose:
-        print "Twilight Zone     - dayFileSize=%i nightFileSize=%i  Diff=%i Twilight=%i" % ( curDayFileSize, curNightFileSize, fileSizeDiff, twilightZone )
-      lastCamMode=" Twilight " 
       if sunSet:
-        twilightShutUp = twilightShutUp + shutInc
-        if twilightShutUp > twilightShutMax:
-          twilightShutUp = twilightShutMax
-        twilightShut = twilightShutUp
+        # Go into low light Twilight Mode 
+        if verbose:
+          print "Twilight Zone     - dayFileSize=%i nightFileSize=%i  Diff=%i Twilight=%i" % ( curDayFileSize, curNightFileSize, fileSizeDiff, twilightZone )
+        lastCamMode = " Twilight "
+        # Toggle Start of Twilight in order to calculate sigmoid curve for shutter speed
+        if startingTwilight:
+          twilightStart = datetime.datetime.now()
+          startingTwilight = False        
+        if sunSet:
+          twilightShut = sigmoidShutter()
+        else:
+          twilightShut = twilightShutMax - sigmoidShutter()
+        TWLShut2Str = shut2Sec(twilightShut)
+        if verbose:
+          print "Twilight Zone     - Working ....  Shutter =%s " % ( TWLShut2Str )
+        curTwilightFileSize = checkNightMode(fileName, twilightShut)     
+        if curTwilightFileSize > twilightFileMax:  # Only used for display
+          twilightFileMax = curTwilightFileSize
       else:
-        twilightShutDn = twilightShutDn - shutInc
-        if twilightShutDn < shutInc:
-          twilightShutDn = shutInc
-        twilightShut = twilightShutDn
-      tempTWLightShut = shut2Sec(twilightShut)
-      if verbose:
-        print "Twilight Zone     - Working ....  Shutter =%s " % ( tempTWLightShut )
-      curTwilightFileSize = checkNightMode(fileName, twilightShut)     
-      if curTwilightFileSize > twilightFileMax:  # Only used for display
-        twilightFileMax = curTwilightFileSize
+        # It morning and flip early since Day Auto can take over bypassing sigmoid ramping.
+        lastCamMode="--- Day --"
+        TWLShut2Str = " Auto  "
+        curDayFileSize = checkDayMode(fileName)
+        if curDayFileSize > dayFileMax:
+          dayFileMax = curDayFileSize
     elif curDayFileSize > curNightFileSize:
-      lastCamMode="--- Day --"
+      lastCamMode = "--- Day --"
+      TWLShut2Str = " Auto  "   
       sunSet = True
+      startingTwilight = True  # Twilight is over so reset
       twilightZone = twilightZoneDay
-      twilightShutUp = 0
       # It was day so take day mode image since last one was night mode.
       curDayFileSize = checkDayMode(fileName)
       if curDayFileSize > dayFileMax:
         dayFileMax = curDayFileSize
     elif curDayFileSize < curNightFileSize:
-      lastCamMode="-- Night -"
-      tempTWLightShut = shut2Sec(maxShutSpeed)
+      lastCamMode ="-- Night -"
+      TWLShut2Str = shut2Sec(maxShutSpeed)
+      startingTwilight = True  # Twilight is over so reset  
       curNightFileSize = checkNightMode(fileName, maxShutSpeed)
       sunSet=False
       twilightZone = twilightZoneNight
-      twilightShutDn = twilightShutMax
       if curNightFileSize > nightFileMax:
         nightFileMax = curNightFileSize
     else:
@@ -424,15 +458,16 @@ while True:
       logTitle2 = "FName       CamMode    "
       logText2  = "%s%s %s" % ( imageNamePrefix, writeCount, lastCamMode ) 
       logTitle3 = "Day      Night    Trigger < TWLZone    Shut    Twilight  Sunset" 
-      logText3  = " %7i   %7i   %7i   %7i   %s   %7i  %s" % (curDayFileSize, curNightFileSize, fileSizeDiff, twilightZone, tempTWLightShut, curTwilightFileSize, sunSet )
+      logText3  = " %7i   %7i   %7i   %7i   %s   %7i   %s" % (curDayFileSize, curNightFileSize, fileSizeDiff, twilightZone, TWLShut2Str, curTwilightFileSize, sunSet )
 
-      if debugCnt > 20:
-        debugCnt = 0
-      if debugCnt == 0:
+      # print a title every so many debut log entries
+      if debugEntries > logTitleEvery:
+        debugEntries = 0
+      if debugEntries == 0:
         print ""
         print logTitle1 + logTitle2 + logTitle3
       print logText1 + logText2 + logText3
-      debugCnt += 1
+      debugEntries += 1
       
     if verbose:
       print "%s - Captured %s" % (dateTimeText, fileName)
