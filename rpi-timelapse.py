@@ -144,9 +144,9 @@ def sigmoidShutter():
   twilightNum = (((currentTwilightSec/3) - (durationOfTwilightSec/6))/ (durationOfTwilightSec/6))*3 # convert seconds to ratio from -3 to +3
  # print "sigmoidShutter - twilightNum=%.2f " % twilightNum
   if sunSet:
-    convertShut = 1 - ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function
+    convertShut = ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function
   else:
-    convertShut = ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function  
+    convertShut = 1 - ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function  
  # print "sigmoidShutter - convertShut=%.2f" % convertShut
   newTwilightShutSpeed = maxShutSpeed * convertShut
  # print "sigmoidShutter - newTwilightShutSpeed= %i" % newTwilightShutSpeed
