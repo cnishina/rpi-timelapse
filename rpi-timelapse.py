@@ -118,7 +118,7 @@ imageNightAuto = False   # set auto exp and wb instead of using low light settin
 nightImages = True       # Take images during Night hours  True=Yes False=No
 
 twilightZoneDay   = 450000    # File Size Difference for Day > Sunset Conditions
-twilightZoneNight = 210000    # File Size Difference for Night> Sunrise Conditions
+twilightZoneNight = 230000    # File Size Difference for Night> Sunrise Conditions
 nightLowShutSpeedSec = 6 # Max=6 Secs of long exposure for LowLight night images
 
 # Calculate some Settings for camera shutter for Low Light conditions. 
@@ -140,16 +140,13 @@ def sigmoidShutter():
   convertShut=0.0
   twilightNow = datetime.datetime.now()
   currentTwilightSec = ( twilightNow - twilightStart ).total_seconds()
- # print "sigmoidShutter - seconds into twilight %i " % currentTwilightSec
   twilightNum = (((currentTwilightSec/3) - (durationOfTwilightSec/6))/ (durationOfTwilightSec/6))*3 # convert seconds to ratio from -3 to +3
- # print "sigmoidShutter - twilightNum=%.2f " % twilightNum
   if sunSet:
-    convertShut = ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function
+    convertShut = 1 - ( 1 / (1 + math.exp(twilightNum)))  # Pass value to sigmoid function
   else:
-    convertShut = 1 - ( 1 / (1 + math.exp(-twilightNum)))  # Pass value to sigmoid function  
- # print "sigmoidShutter - convertShut=%.2f" % convertShut
+    convertShut = ( 1 / (1 + math.exp(twilightNum)))  # Pass value to sigmoid function  
   newTwilightShutSpeed = maxShutSpeed * convertShut
- # print "sigmoidShutter - newTwilightShutSpeed= %i" % newTwilightShutSpeed
+  # print "sigmoidShutter - twilight=%i convertShut=%.2f newTwilightShutSpeed=%i" % ( currentTwilightSec, convertShut, newTwilightShutSpeed )
   return abs(newTwilightShutSpeed)
 
 #Convert Shutter speed to text for display purposes
