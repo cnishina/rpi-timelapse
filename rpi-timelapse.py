@@ -33,12 +33,12 @@
 # 02-Nov-2014 ver 1.4.5 Added debugLog and Tuning and minor logic fixes.
 # 03-Nov-2014 ver 1.4.6 Added sigmoidShutter function and logic to replace linear steps
 # 04-Nov-2014 ver 1.4.7 Changed Sunrise to bypass Sigmoid since Day Auto can take over
-
-timeLapseVer = "1.4.7"
+# 24-Nov-2014 ver 1.4.8 Fine Tuning twilight zone.  Sunset is good. Sunrise needs more work.
+timeLapseVer = "1.4.8"
 
 # Set verbose to False to suppress console messages if running script as daemon
-
-debugLog = True
+ 
+debugLog = False
 logTitleEvery = 25   # number of line entries before redisplaying the title
 verbose = False
 
@@ -92,7 +92,7 @@ if not os.path.isdir(imagePath):
   os.makedirs(imagePath)
 
 # Set global camera timelapse settings
-timeDelay = 60*5            # timelapse delay time in seconds eg every 10 minutes
+timeDelay = 60*3            # timelapse delay time in seconds eg every 10 minutes
 imageNamePrefix = 'front-'  # Prefix for all image file names. Eg front-
 imageWidth = 1920
 imageHeight = 1080
@@ -120,6 +120,8 @@ nightImages = True       # Take images during Night hours  True=Yes False=No
 twilightZoneDay   = 450000    # File Size Difference for Day > Sunset Conditions
 twilightZoneNight = 230000    # File Size Difference for Night> Sunrise Conditions
 nightLowShutSpeedSec = 6 # Max=6 Secs of long exposure for LowLight night images
+nightLowLightISO = 800   # Normal Night time ISO setting for Low Light images 
+dayLightISO = 200
 
 # Calculate some Settings for camera shutter for Low Light conditions. 
 # Set Shorter Twighlight minutes if Camera Auto Exposure is Ok with low light
@@ -167,7 +169,12 @@ def checkDayMode(filename):
       camera.vflip = imageVFlip
     if imageHFlip:
       camera.hflip = imageHFlip
-    camera.iso = 100
+    if inTwilightZone:
+      camera.iso = dayLightISO * 3
+      if camera.iso > 800:
+        camera.iso = 800
+    else:
+      camera.iso = dayLightISO
     if imageDayAuto:
       # Day Automatic Mode
       camera.exposure_mode = 'auto'
@@ -212,13 +219,16 @@ def checkNightMode(filename, shutspeed):
       # Night time low light settings have long exposure times 
       # Settings for Low Light Conditions 
       # Set a frame rate of 1/6 fps, then set shutter
-      # speed to 6s and ISO to 800
+      # speed to 6s and ISO to nightLowLightISO variable
       camera.framerate = Fraction(1, 6)
       if verbose:
         print "checkNightMode    - shutSpeed=%i %s" % ( shutspeed, shut2Sec(shutspeed) )
       camera.shutter_speed = int(shutspeed)
       camera.exposure_mode = 'off'
-      camera.iso = 800
+      if inTwilightZone:
+        camera.iso = int(nightLowLightISO / 4 )
+      else:  
+        camera.iso = nightLowLightISO
       # Give the camera a good long time to measure AWB
       # (you may wish to use fixed AWB instead)
       time.sleep(10)
@@ -318,8 +328,8 @@ else:
 startingTwilight = True
 twilightStart = datetime.datetime.now()
 
-while True: 
-    takePhoto = True
+while True:
+    inTwilightZone = False 
     rightNow = datetime.datetime.now()
     if numberSequence :
       fileName = imagePath + "/" + imageNamePrefix + str(currentCount) + ".jpg"
@@ -347,6 +357,7 @@ while True:
     # If small difference between files then check Twilight Mode
     # Change shutter speed incrementally
     if fileSizeDiff < twilightZone:
+      inTwilightZone = True
       if sunSet:
         # Go into low light Twilight Mode 
         if verbose:
@@ -356,7 +367,7 @@ while True:
         if startingTwilight:
           twilightStart = datetime.datetime.now()
           startingTwilight = False        
-        if sunSet:
+        if sunSet:       # This looks like redundant check. Changed logic to bypass sigmoid ramping at sunrise. Still Testing so left in
           twilightShut = sigmoidShutter()
         else:
           twilightShut = twilightShutMax - sigmoidShutter()
@@ -367,7 +378,7 @@ while True:
         if curTwilightFileSize > twilightFileMax:  # Only used for display
           twilightFileMax = curTwilightFileSize
       else:
-        # It morning and flip early since Day Auto can take over bypassing sigmoid ramping.
+        # It morning then flip early since Day Auto can take over bypassing sigmoid ramping.
         lastCamMode="--- Day --"
         TWLShut2Str = " Auto  "
         curDayFileSize = checkDayMode(fileName)
