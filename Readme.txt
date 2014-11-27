@@ -1,10 +1,12 @@
-                rpi-timelapse.py
-
-rpi-timelapse.py using a raspberry pi with RPI camera installed.
-This program uses the picamera python module to take images.
-written by Claude Pageau 21-Oct-2014 initial release
-source code published on github https://github.com/pageauc
-email: pageauc@gmail.com
+          Raspberry Pi Day/Night Long Duration Time Lapse
+          ----------------------------------------------- 
+           written by Claude Pageau - pageauc@gmail.com
+Summary
+-------                    
+rpi-timelapse uses a raspberry pi camera to take Long Duration Time Lapse images
+It can use Low Light Night settings and Auto switches for Day, Night, Twilight
+Source code and Docs published on github https://github.com/pageauc
+to Clone from github execute the following from ssh or rpi terminal session
 
 Background
 ----------
@@ -42,13 +44,20 @@ In the spring I will post a YouTube video of the results.
 
 Claude ....
 
-Upgrade History
----------------
-21-Oct-2014 ver 1.0 initial release on github 
-23-Oct-2014 ver 1.1 Implemented additional number sequence logic
+Major Revision History
+======================
+21-Oct-2014 ver 1.0 initial release ver 1.0
+22-Oct-2014 Update to include bypassing night shots and auto camera settings
+23-Oct-2014 ver 1.1 Added numberSequence Logic
+24-Oct-2014 ver 1.2 Added take test image, New todayAt() time logic
 27-Oct-2014 ver 1.3 Added Twilight logic to auto switch between day and night
 29-Oct-2014 ver 1.4 Rewrote to automate switch between day, night, twilight
-31-Oct-2014 ver 1.4.4  Updated variable names, mode logic and display
+31-Oct-2014 ver 1.4.4 Updated variable names, mode logic and display
+02-Nov-2014 ver 1.4.5 Added debugLog and Tuning and minor logic fixes.
+03-Nov-2014 ver 1.4.6 Added sigmoidShutter function and logic to replace linear steps
+04-Nov-2014 ver 1.4.7 Changed Sunrise to bypass Sigmoid since Day Auto can take over
+24-Nov-2014 ver 1.4.8 Fine Tuning twilight zone.  Sunset is good. Sunrise needs more work.
+26-Nov-2014 ver 1.4.9 Fine Tuning twilight zone.  Changed logic for Sunrise Twilight.
 
 Program Features
 ----------------
